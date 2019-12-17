@@ -2,6 +2,7 @@ package sumchecker
 
 import (
 	"bytes"
+	"crypto"
 	"fmt"
 	"hash"
 	"sync"
@@ -18,6 +19,15 @@ func (h *hashPool) get() hash.Hash {
 func (h *hashPool) put(hsh hash.Hash) {
 	hsh.Reset()
 	h.pool.Put(hsh)
+}
+
+type HashFunc func() hash.Hash
+
+var CommonHashes = map[string]HashFunc{
+	"md5":    crypto.MD5.New,
+	"sha1":   crypto.SHA1.New,
+	"sha256": crypto.SHA256.New,
+	"sha512": crypto.SHA512.New,
 }
 
 //SumChecker will generate or validate checksums using any registered hash.Hash.
@@ -46,14 +56,21 @@ func (h *SumChecker) withHash(hashName string, fn func(hash.Hash) error) error {
 	return fn(hsh)
 }
 
+//RegisterHashes registers all the hashes in the map
+func (h *SumChecker) RegisterHashes(hashes map[string]HashFunc) {
+	for name, hashFunc := range hashes {
+		h.RegisterHash(name, hashFunc)
+	}
+}
+
 //RegisterHash registers a hash.Hash to be used with SumChecker.
-func (h *SumChecker) RegisterHash(hashName string, newHash func() hash.Hash) {
+func (h *SumChecker) RegisterHash(hashName string, fn HashFunc) {
 	h.hashesMux.Lock()
 	defer h.hashesMux.Unlock()
 	h.hashes()[hashName] = &hashPool{
 		pool: sync.Pool{
 			New: func() interface{} {
-				return newHash()
+				return fn()
 			},
 		},
 	}

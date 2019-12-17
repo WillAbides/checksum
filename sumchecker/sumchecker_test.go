@@ -1,10 +1,6 @@
 package sumchecker_test
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"hash"
@@ -36,10 +32,7 @@ var knownHexSums = map[string]map[string]string{
 }
 
 func registerTestHashes(checker *sumchecker.SumChecker) {
-	checker.RegisterHash("sha256", sha256.New)
-	checker.RegisterHash("sha512", sha512.New)
-	checker.RegisterHash("sha1", sha1.New)
-	checker.RegisterHash("md5", md5.New)
+	checker.RegisterHashes(sumchecker.CommonHashes)
 }
 
 func TestChecker_Sum(t *testing.T) {

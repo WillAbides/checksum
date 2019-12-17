@@ -1,10 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -27,10 +23,7 @@ var _sumChecker *sumchecker.SumChecker
 func sumChecker() *sumchecker.SumChecker {
 	sumCheckerOnce.Do(func() {
 		_sumChecker = new(sumchecker.SumChecker)
-		_sumChecker.RegisterHash("sha1", sha1.New)
-		_sumChecker.RegisterHash("sha256", sha256.New)
-		_sumChecker.RegisterHash("sha512", sha512.New)
-		_sumChecker.RegisterHash("md5", md5.New)
+		_sumChecker.RegisterHashes(sumchecker.CommonHashes)
 	})
 	return _sumChecker
 }

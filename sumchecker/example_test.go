@@ -1,7 +1,6 @@
 package sumchecker_test
 
 import (
-	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 
@@ -10,7 +9,7 @@ import (
 
 func Example() {
 	checker := new(sumchecker.SumChecker)
-	checker.RegisterHash("md5", md5.New)
+	checker.RegisterHashes(sumchecker.CommonHashes)
 
 	exampleData := []byte("foo bar")
 

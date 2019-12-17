@@ -1,10 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -22,10 +18,7 @@ var sumChecker *sumchecker.SumChecker
 
 func init() {
 	sumChecker = new(sumchecker.SumChecker)
-	sumChecker.RegisterHash("sha1", sha1.New)
-	sumChecker.RegisterHash("sha256", sha256.New)
-	sumChecker.RegisterHash("sha512", sha512.New)
-	sumChecker.RegisterHash("md5", md5.New)
+	sumChecker.RegisterHashes(sumchecker.CommonHashes)
 }
 
 func errOut(format string, a ...interface{}) {
