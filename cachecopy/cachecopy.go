@@ -67,7 +67,7 @@ func Copy(dst io.Writer, src io.Reader, validator func(io.Reader) bool, cache Ca
 		cache = NewBufferCache(nil)
 	}
 	defer func() {
-		err = cache.Close()
+		_ = cache.Close()
 	}()
 	_, err = io.Copy(cache, src)
 	if err != nil {
@@ -90,7 +90,7 @@ func Copy(dst io.Writer, src io.Reader, validator func(io.Reader) bool, cache Ca
 		return written, fmt.Errorf("error getting cache reader")
 	}
 	defer func() {
-		err = rdr.Close()
+		_ = rdr.Close()
 	}()
 	written, err = io.Copy(dst, rdr)
 	return written, err
