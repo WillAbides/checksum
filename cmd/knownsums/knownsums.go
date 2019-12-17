@@ -1,14 +1,20 @@
 package main
 
 import (
+	"crypto"
+	_ "crypto/md5"
+	_ "crypto/sha1"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
+	"strings"
 
 	"github.com/WillAbides/checksum/knownsums"
+	"github.com/WillAbides/checksum/knownsums/hashnames"
 	"github.com/WillAbides/checksum/sumchecker"
 	"github.com/alecthomas/kong"
 )
@@ -17,20 +23,9 @@ type existingChecksums struct {
 	Checksums string `kong:"required,type=existingfile,short='c',help='checksums file'"`
 }
 
-var sumCheckerOnce sync.Once
-var _sumChecker *sumchecker.SumChecker
-
-func sumChecker() *sumchecker.SumChecker {
-	sumCheckerOnce.Do(func() {
-		_sumChecker = new(sumchecker.SumChecker)
-		_sumChecker.RegisterHashes(sumchecker.CommonHashes)
-	})
-	return _sumChecker
-}
-
 func (c existingChecksums) knownSums() (*knownsums.KnownSums, error) {
 	sums := knownsums.KnownSums{
-		SumChecker: sumChecker(),
+		Checker: sumchecker.New(nil),
 	}
 	b, err := ioutil.ReadFile(c.Checksums)
 	if err != nil {
@@ -78,7 +73,11 @@ func (c *initCmd) Run() error {
 type nameFileAlgo struct {
 	File      string `kong:"arg,existingfile"`
 	Name      string `kong:"arg,optional"`
-	Algorithm string `kong:"short=a,enum='sha1,sha256,sha512,md5',default=sha256"`
+	Algorithm string `kong:"short=a,enum=${algo_enum},default=${algo_default},help=${algo_help}"`
+}
+
+func (n nameFileAlgo) hash() crypto.Hash {
+	return hashnames.LookupHash(n.Algorithm)
 }
 
 func (n nameFileAlgo) name() string {
@@ -115,7 +114,7 @@ func (c *addCmd) Run() error {
 	if err != nil {
 		return err
 	}
-	err = checksums.Add(c.NameFileAlgo.name(), c.NameFileAlgo.Algorithm, data)
+	err = checksums.Add(c.NameFileAlgo.name(), c.NameFileAlgo.hash(), data)
 	if err != nil {
 		return err
 	}
@@ -131,7 +130,8 @@ func (c *validateCmd) Run() error {
 	if err != nil {
 		return err
 	}
-	got, err := checksums.Validate(c.NameFileAlgo.name(), c.NameFileAlgo.Algorithm, data)
+	hsh := c.NameFileAlgo.hash()
+	got, err := checksums.Validate(c.NameFileAlgo.name(), &hsh, data)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,12 @@ func (c *validateCmd) Run() error {
 var cli mainCmd
 
 func main() {
-	kctx := kong.Parse(&cli)
+	vars := kong.Vars{
+		"algo_enum":    strings.Join(hashnames.AvailableHashNames(), ","),
+		"algo_default": hashnames.HashName(crypto.SHA256),
+		"algo_help":    fmt.Sprintf("The hash algorithm to use.  One of %s", strings.Join(hashnames.AvailableHashNames(), ", ")),
+	}
+	kctx := kong.Parse(&cli, vars)
 	err := kctx.Run()
 	kctx.FatalIfErrorf(err)
 }

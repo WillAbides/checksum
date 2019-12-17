@@ -1,74 +1,69 @@
 package knownsums
 
 import (
+	"crypto"
 	"fmt"
 	"sync"
 )
 
-//go:generate mockgen -source knownsums.go -destination _mocks/knownsums_mocks.go -package _mocks
-
-//SumChecker generates and validates checksums
-//SumChecker is implemented by *SumChecker in github.com/WillAbides/checksum/sumchecker
-type SumChecker interface {
-	//Sum generates a checksum for data using a hash with the given hashName
-	Sum(hashName string, data []byte) ([]byte, error)
-	//Validate returns true if the sum generated for data matches wantSum
-	Validate(hashName string, wantSum []byte, data []byte) (bool, error)
+type Checker interface {
+	Checksum(hasher crypto.Hash, data []byte) ([]byte, error)
+	ValidateChecksum(hasher crypto.Hash, wantSum []byte, data []byte) (bool, error)
 }
 
 type knownSum struct {
+	Hash     crypto.Hash
 	Name     string
-	HashName string
 	Checksum []byte
 }
 
 //KnownSums contains a list of checksums that can be validated with the Validate func
 type KnownSums struct {
 	sync.RWMutex
-	SumChecker SumChecker
-	knownSums  []*knownSum
+	Checker   Checker
+	knownSums []*knownSum
 }
 
 //Add adds a checksum that can be validated by KnownSums.
 //It uses KnownSums' SumChecker to calculate data's checksum.
-func (c *KnownSums) Add(name, hashName string, data []byte) error {
-	if c.SumChecker == nil {
-		return fmt.Errorf("SumChecker cannot be nil")
+func (c *KnownSums) Add(name string, hash crypto.Hash, data []byte) error {
+	if c.Checker == nil {
+		return fmt.Errorf("checker cannot be nil")
 	}
-	sum, err := c.SumChecker.Sum(hashName, data)
+	if !hash.Available() {
+		return fmt.Errorf("hash is not available")
+	}
+	sum, err := c.Checker.Checksum(hash, data)
 	if err != nil {
 		return fmt.Errorf("error calculating sum: %w", err)
 	}
-	return c.AddPrecalculatedSum(name, hashName, sum)
+	return c.AddPrecalculatedSum(name, hash, sum)
 }
 
 //AddPrecalculatedSum adds a sum that has already been calculated.
 //This is primarily intended to be used for serialization
-func (c *KnownSums) AddPrecalculatedSum(name, hashName string, sum []byte) error {
+func (c *KnownSums) AddPrecalculatedSum(name string, hash crypto.Hash, sum []byte) error {
 	c.Lock()
 	defer c.Unlock()
-	if hashName == "" {
-		return fmt.Errorf("hashName cannot be empty")
-	}
-	existing := withNameAndHash(c.knownSums, name, hashName)
+	existing := withNameAndHash(c.knownSums, name, &hash)
 	if len(existing) != 0 {
-		return fmt.Errorf("cannot add duplicate name and hashName")
+		return fmt.Errorf("cannot add duplicate name and hash")
 	}
 	c.knownSums = append(c.knownSums, &knownSum{
 		Name:     name,
-		HashName: hashName,
+		Hash:     hash,
 		Checksum: sum,
 	})
 	return nil
 }
 
 //Remove removes a checksum from KnownSums
-func (c *KnownSums) Remove(name, hashName string) {
+func (c *KnownSums) Remove(name string, hash *crypto.Hash) {
 	c.Lock()
 	defer c.Unlock()
 	newSums := make([]*knownSum, 0, len(c.knownSums))
 	for _, sum := range c.knownSums {
-		if matchNameAndHash(name, hashName, sum) {
+		if matchNameAndHash(name, hash, sum) {
 			continue
 		}
 		newSums = append(newSums, sum)
@@ -79,17 +74,20 @@ func (c *KnownSums) Remove(name, hashName string) {
 //Validate returns true if data's checksum matches the sum stored in KnownSums.
 //Looks for the known sum with the given name and hashName and uses SumChecker to validate that the sums match.
 //If hashName is empty, it will return true if all known sums with the given name return true.
-func (c *KnownSums) Validate(name string, hashName string, data []byte) (bool, error) {
+func (c *KnownSums) Validate(name string, hash *crypto.Hash, data []byte) (bool, error) {
 	c.RLock()
 	defer c.RUnlock()
-	if c.SumChecker == nil {
-		return false, fmt.Errorf("SumChecker cannot be nil")
+	if c.Checker == nil {
+		return false, fmt.Errorf("checker cannot be nil")
 	}
-	sums := withNameAndHash(c.knownSums, name, hashName)
+	sums := withNameAndHash(c.knownSums, name, hash)
 	var err error
 	var ok bool
 	for _, sum := range sums {
-		ok, err = c.SumChecker.Validate(sum.HashName, sum.Checksum, data)
+		if !sum.Hash.Available() {
+			continue
+		}
+		ok, err = c.Checker.ValidateChecksum(sum.Hash, sum.Checksum, data)
 		if err != nil {
 			err = fmt.Errorf(`error validating known sum %s: %w`, name, err)
 			break
@@ -101,22 +99,21 @@ func (c *KnownSums) Validate(name string, hashName string, data []byte) (bool, e
 	return ok, err
 }
 
-//returns true if sum.Name == name and hashName is either empty or matches sum.HashName
-func matchNameAndHash(name, hashName string, sum *knownSum) bool {
+//returns true if sum.Name == name and hash is either nil or matches sum.HashName
+func matchNameAndHash(name string, hash *crypto.Hash, sum *knownSum) bool {
 	if sum == nil {
 		return false
 	}
-	if hashName != "" && sum.HashName != hashName {
+	if hash != nil && sum.Hash != *hash {
 		return false
 	}
 	return sum.Name == name
 }
 
-//returns the subset of sums where matchNameAndHash is true
-func withNameAndHash(sums []*knownSum, name, hashName string) []*knownSum {
+func withNameAndHash(sums []*knownSum, name string, hash *crypto.Hash) []*knownSum {
 	result := make([]*knownSum, 0, len(sums))
 	for _, sum := range sums {
-		if matchNameAndHash(name, hashName, sum) {
+		if matchNameAndHash(name, hash, sum) {
 			result = append(result, sum)
 		}
 	}

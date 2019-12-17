@@ -1,6 +1,7 @@
 package sumchecker_test
 
 import (
+	"crypto"
 	"encoding/hex"
 	"fmt"
 
@@ -8,17 +9,14 @@ import (
 )
 
 func Example() {
-	checker := new(sumchecker.SumChecker)
-	checker.RegisterHashes(sumchecker.CommonHashes)
-
 	exampleData := []byte("foo bar")
 
-	sum, err := checker.Sum("md5", exampleData)
+	sum, err := sumchecker.Checksum(crypto.MD5, exampleData)
 	if err != nil {
 		panic(err)
 	}
 
-	ok, err := checker.Validate("md5", sum, exampleData)
+	ok, err := sumchecker.ValidateChecksum(crypto.MD5, sum, exampleData)
 	if err != nil {
 		panic(err)
 	}

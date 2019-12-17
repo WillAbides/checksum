@@ -1,6 +1,10 @@
 package main
 
 import (
+	_ "crypto/md5"
+	_ "crypto/sha1"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -10,16 +14,9 @@ import (
 	"path/filepath"
 
 	"github.com/WillAbides/checksum/cachecopy"
-	"github.com/WillAbides/checksum/knownsums"
+	"github.com/WillAbides/checksum/knownsums/hashnames"
 	"github.com/WillAbides/checksum/sumchecker"
 )
-
-var sumChecker *sumchecker.SumChecker
-
-func init() {
-	sumChecker = new(sumchecker.SumChecker)
-	sumChecker.RegisterHashes(sumchecker.CommonHashes)
-}
 
 func errOut(format string, a ...interface{}) {
 	_, _ = fmt.Fprintf(os.Stderr, format, a...)
@@ -31,9 +28,9 @@ func exitErr(format string, a ...interface{}) {
 }
 
 func main() {
-	var hsh string
+	var hashName string
 
-	flag.StringVar(&hsh, "a", "sha256", "Hash algorithm to use.  One of sha1, sha256, sha512 or md5.")
+	flag.StringVar(&hashName, "a", "sha256", "Hash algorithm to use.  One of sha1, sha256, sha512 or md5.")
 
 	flag.Usage = func() {
 		errOut(`
@@ -73,16 +70,7 @@ Options:
 	if err != nil {
 		exitErr("checksum must be a hex value\n")
 	}
-
-	ks := knownsums.KnownSums{
-		SumChecker: sumChecker,
-	}
-
-	err = ks.AddPrecalculatedSum("default", hsh, wantSum)
-	if err != nil {
-		exitErr("error: %v\n", err)
-	}
-
+	hsh := hashnames.LookupHash(hashName)
 	var validated bool
 
 	copier := &cachecopy.Copier{
@@ -93,7 +81,7 @@ Options:
 				exitErr("error reading input stream: %v\n", err)
 				return false
 			}
-			got, err := ks.Validate("default", hsh, b)
+			got, err := sumchecker.ValidateChecksum(hsh, wantSum, b)
 			if err != nil {
 				exitErr("error validating the checksum: %v\n", err)
 				return false
@@ -109,6 +97,6 @@ Options:
 	}
 
 	if !validated {
-		exitErr("input did not match the checksum %x using the hash algorithm %s\n", wantSum, hsh)
+		exitErr("input did not match the checksum %x using the hash algorithm %s\n", wantSum, hashName)
 	}
 }

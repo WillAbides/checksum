@@ -3,6 +3,8 @@ package knownsums
 import (
 	"encoding/hex"
 	"encoding/json"
+
+	"github.com/WillAbides/checksum/knownsums/hashnames"
 )
 
 type jsonKnownSum struct {
@@ -18,7 +20,7 @@ func (j *jsonKnownSum) knownSum() (*knownSum, error) {
 	}
 	return &knownSum{
 		Name:     j.Name,
-		HashName: j.HashName,
+		Hash:     hashnames.LookupHash(j.HashName),
 		Checksum: sum,
 	}, nil
 }
@@ -26,7 +28,7 @@ func (j *jsonKnownSum) knownSum() (*knownSum, error) {
 func (k *knownSum) jsonKnownSum() *jsonKnownSum {
 	return &jsonKnownSum{
 		Name:     k.Name,
-		HashName: k.HashName,
+		HashName: hashnames.HashName(k.Hash),
 		Checksum: hex.EncodeToString(k.Checksum),
 	}
 }

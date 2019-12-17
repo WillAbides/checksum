@@ -1,6 +1,7 @@
 package knownsums
 
 import (
+	"crypto"
 	"encoding/json"
 	"testing"
 
@@ -12,12 +13,12 @@ func TestKnownSums_MarshalJSON(t *testing.T) {
 		knownSums: []*knownSum{
 			{
 				Name:     "foo",
-				HashName: "bar",
+				Hash:     crypto.MD5,
 				Checksum: []byte("baz"),
 			},
 			{
 				Name:     "qux",
-				HashName: "baz",
+				Hash:     crypto.MD5,
 				Checksum: []byte("bar"),
 			},
 		},
@@ -27,12 +28,12 @@ func TestKnownSums_MarshalJSON(t *testing.T) {
 [
   {
     "name": "foo",
-    "hash": "bar",
+    "hash": "md5",
     "checksum": "62617a"
   },
   {
     "name": "qux",
-    "hash": "baz",
+    "hash": "md5",
     "checksum": "626172"
   }
 ]
@@ -47,12 +48,12 @@ func TestKnownSums_UnmarshalJSON(t *testing.T) {
 [
   {
     "name": "foo",
-    "hash": "bar",
+    "hash": "sha1",
     "checksum": "62617a"
   },
   {
     "name": "qux",
-    "hash": "baz",
+    "hash": "md5",
     "checksum": "626172"
   }
 ]
@@ -61,12 +62,12 @@ func TestKnownSums_UnmarshalJSON(t *testing.T) {
 		knownSums: []*knownSum{
 			{
 				Name:     "foo",
-				HashName: "bar",
+				Hash:     crypto.SHA1,
 				Checksum: []byte("baz"),
 			},
 			{
 				Name:     "qux",
-				HashName: "baz",
+				Hash:     crypto.MD5,
 				Checksum: []byte("bar"),
 			},
 		},
@@ -83,13 +84,13 @@ func TestKnownSum_UnmarshalJSON(t *testing.T) {
 		j := `
 {
   "name": "foo",
-  "hash": "bar",
+  "hash": "md5",
   "checksum": "62617a"
 }
 `
 		want := knownSum{
 			Name:     "foo",
-			HashName: "bar",
+			Hash:     crypto.MD5,
 			Checksum: []byte("baz"),
 		}
 
@@ -104,12 +105,12 @@ func TestKnownSum_UnmarshalJSON(t *testing.T) {
 [
   {
     "name": "foo",
-    "hash": "bar",
+    "hash": "sha1",
     "checksum": "62617a"
   },
   {
     "name": "qux",
-    "hash": "baz",
+    "hash": "md5",
     "checksum": "626172"
   }
 ]
@@ -117,12 +118,12 @@ func TestKnownSum_UnmarshalJSON(t *testing.T) {
 		want := []*knownSum{
 			{
 				Name:     "foo",
-				HashName: "bar",
+				Hash:     crypto.SHA1,
 				Checksum: []byte("baz"),
 			},
 			{
 				Name:     "qux",
-				HashName: "baz",
+				Hash:     crypto.MD5,
 				Checksum: []byte("bar"),
 			},
 		}
@@ -139,13 +140,13 @@ func TestKnownSum_MarshalJSON(t *testing.T) {
 	t.Run("single", func(t *testing.T) {
 		ks := &knownSum{
 			Name:     "foo",
-			HashName: "bar",
+			Hash:     crypto.MD5,
 			Checksum: []byte("baz"),
 		}
 		want := `
 {
   "name": "foo",
-  "hash": "bar",
+  "hash": "md5",
   "checksum": "62617a"
 }
 `
@@ -159,12 +160,12 @@ func TestKnownSum_MarshalJSON(t *testing.T) {
 		ks := []*knownSum{
 			{
 				Name:     "foo",
-				HashName: "bar",
+				Hash:     crypto.MD5,
 				Checksum: []byte("baz"),
 			},
 			{
 				Name:     "qux",
-				HashName: "baz",
+				Hash:     crypto.MD5,
 				Checksum: []byte("bar"),
 			},
 		}
@@ -173,12 +174,12 @@ func TestKnownSum_MarshalJSON(t *testing.T) {
 [
   {
     "name": "foo",
-    "hash": "bar",
+    "hash": "md5",
     "checksum": "62617a"
   },
   {
     "name": "qux",
-    "hash": "baz",
+    "hash": "md5",
     "checksum": "626172"
   }
 ]
