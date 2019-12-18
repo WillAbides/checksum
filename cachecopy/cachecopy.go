@@ -13,7 +13,18 @@ type Cache interface {
 	Reader() (io.ReadCloser, error)
 }
 
-type Validator func(io.Reader) bool
+type Validator func(io.Reader) (bool, string)
+
+type ValidatorError struct {
+	msg string
+}
+
+func (e *ValidatorError) Error() string {
+	if e.msg == "" {
+		return "validator returned false with no message"
+	}
+	return fmt.Sprintf("validator returned false with the message: %q", e.msg)
+}
 
 type Copier struct {
 	Cache     Cache
@@ -59,7 +70,7 @@ func (c *fileCache) Reader() (io.ReadCloser, error) {
 	return os.Open(c.File.Name())
 }
 
-func Copy(dst io.Writer, src io.Reader, validator func(io.Reader) bool, cache Cache) (written int64, err error) {
+func Copy(dst io.Writer, src io.Reader, validator func(io.Reader) (bool, string), cache Cache) (written int64, err error) {
 	if validator == nil {
 		return written, fmt.Errorf("validator cannot be nil")
 	}
@@ -77,13 +88,10 @@ func Copy(dst io.Writer, src io.Reader, validator func(io.Reader) bool, cache Ca
 	if err != nil {
 		return written, fmt.Errorf("error getting cache reader")
 	}
-	ok := validator(vReader)
-	err = vReader.Close()
-	if err != nil {
-		return written, fmt.Errorf("error closing cache reader")
-	}
+	ok, validatorMsg := validator(vReader)
+	_ = vReader.Close()
 	if !ok {
-		return written, fmt.Errorf("src did not validate")
+		return written, &ValidatorError{msg: validatorMsg}
 	}
 	rdr, err := cache.Reader()
 	if err != nil {

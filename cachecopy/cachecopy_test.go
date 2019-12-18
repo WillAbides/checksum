@@ -42,17 +42,19 @@ func tmpFile(t *testing.T) (*os.File, func()) {
 	}
 }
 
-var failingValidator = func(reader io.Reader) bool {
-	return false
+var failingValidator = func(reader io.Reader) (bool, string) {
+	return false, "failing validator always fails"
 }
 
-func loremValidator(t *testing.T) func(reader io.Reader) bool {
+var failingValidatorErr = &ValidatorError{msg: "failing validator always fails"}
+
+func loremValidator(t *testing.T) func(reader io.Reader) (bool, string) {
 	t.Helper()
-	return func(rdr io.Reader) bool {
+	return func(rdr io.Reader) (bool, string) {
 		t.Helper()
 		got, e := ioutil.ReadAll(rdr)
 		require.NoError(t, e)
-		return bytes.Equal(got, loremBuf(t).Bytes())
+		return bytes.Equal(got, loremBuf(t).Bytes()), ""
 	}
 }
 
@@ -73,7 +75,7 @@ func TestCopy(t *testing.T) {
 			cache := NewBufferCache(&buf)
 			var dst bytes.Buffer
 			_, err := Copy(&dst, loremBuf(t), failingValidator, cache)
-			assert.EqualError(t, err, "src did not validate")
+			assert.Equal(t, failingValidatorErr, err)
 			assert.Empty(t, dst.String())
 		})
 	})
@@ -96,7 +98,7 @@ func TestCopy(t *testing.T) {
 			cache := NewFileCache(cacheFile)
 			var dst bytes.Buffer
 			_, err := Copy(&dst, loremBuf(t), failingValidator, cache)
-			assert.EqualError(t, err, "src did not validate")
+			assert.Equal(t, failingValidatorErr, err)
 			assert.Empty(t, dst.String())
 		})
 	})

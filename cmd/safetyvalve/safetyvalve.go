@@ -75,19 +75,19 @@ Options:
 
 	copier := &cachecopy.Copier{
 		Cache: cachecopy.NewBufferCache(nil),
-		Validator: func(rdr io.Reader) bool {
+		Validator: func(rdr io.Reader) (bool, string) {
 			b, err := ioutil.ReadAll(rdr)
 			if err != nil {
 				exitErr("error reading input stream: %v\n", err)
-				return false
+				return false, ""
 			}
 			got, err := sumchecker.ValidateChecksum(hsh, wantSum, b)
 			if err != nil {
 				exitErr("error validating the checksum: %v\n", err)
-				return false
+				return false, ""
 			}
 			validated = got
-			return got
+			return got, ""
 		},
 	}
 
